@@ -289,43 +289,31 @@ def WD_Loss(fake_grad, gt_grad, num_bins=256):
     grad1_flat = fake_grad.view(-1)
     grad2_flat = gt_grad.view(-1)
 
-    # 确定直方图的取值范围，根据两个梯度tensor的最小值和最大值
+
     min_val = min(grad1_flat.min(), grad2_flat.min()).item()
     max_val = max(grad1_flat.max(), grad2_flat.max()).item()
 
-    # 计算直方图
+
     hist1 = torch.histc(grad1_flat, bins=num_bins, min=min_val, max=max_val)
     hist2 = torch.histc(grad2_flat, bins=num_bins, min=min_val, max=max_val)
 
-    # 归一化直方图，使其和为1
+
     hist1 = hist1 / (hist1.sum() + 1e-9)
     hist2 = hist2 / (hist2.sum() + 1e-9)
 
-    # 计算累积分布函数 (CDF)
+
     cdf1 = torch.cumsum(hist1, dim=0)
     cdf2 = torch.cumsum(hist2, dim=0)
 
-    # 计算 bin 宽度
+
     bin_width = (max_val - min_val) / num_bins
 
-    # 计算 WD 距离：累积直方图差值的 L1 距离乘以 bin 宽度
+
     wd = torch.sum(torch.abs(cdf1 - cdf2)) * bin_width
     return wd
 
 
 def wd_loss_grad_tuple(fake_grads, gt_grads, num_bins=256, aggregate='mean'):
-    """
-    计算两个 tuple 中对应梯度 tensor 的 Wasserstein 距离（WD 距离），并对各个 WD 距离进行聚合。
-
-    参数:
-        tuple1 (tuple): 包含多个梯度 tensor 的 tuple。
-        tuple2 (tuple): 包含多个梯度 tensor 的 tuple，要求与 tuple1 长度一致。
-        num_bins (int): 用于构造直方图的分箱数量，默认值为256。
-        aggregate (str): 聚合方式，'mean' 表示取平均，'sum' 表示求和。
-
-    返回:
-        torch.Tensor: 标量 tensor，表示两个 tuple 中所有对应梯度 tensor WD 距离的聚合值。
-    """
     if len(fake_grads) != len(gt_grads):
         raise ValueError("输入的两个 tuple 长度必须一致")
 
@@ -336,6 +324,6 @@ def wd_loss_grad_tuple(fake_grads, gt_grads, num_bins=256, aggregate='mean'):
     wd_tensor = torch.stack(wd_list)
     if aggregate == 'sum':
         return wd_tensor.sum()
-    else:  # 默认采用 mean
+    else:
         return wd_tensor.mean()
 
